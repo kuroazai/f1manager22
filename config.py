@@ -1,0 +1,1 @@
+save_folder = r"C:\Users\Odin\AppData\Local\F1Manager22\Saved\SaveGames"
