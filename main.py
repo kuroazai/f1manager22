@@ -55,7 +55,9 @@ class SeasonChanger(DBConnector):
     tyres_table: str = 'Tyres'
     drivers_table: str = 'Staff_DriverData'
     drivers_stats: str = 'Staff_PerformanceStats'
-
+    teams_finances: str = 'Finance_TeamBalance'
+    engine_manufacturers: str = 'Parts_Enum_EngineManufacturers'
+    design_stats: str = 'Parts_DesignStatValues'
 
     def __init__(self, db_path: str, base_tyre_life: int, base_perf: int, tyre3set_perf_diff: float, tyre3set_life_diff: float, dirty_air: float, drs: float, slipstream: float, f1_cfg=cfg):
         super().__init__(db_path)
@@ -109,14 +111,17 @@ class SeasonChanger(DBConnector):
         # set drs multiplier
         query = f"UPDATE {self.race_perf_table} SET MaxDRSTopSpeedMultiplier = ?;"
         value = str(self.drs)
-        print("DRS set", value)
         self.execute_value(query, (value,))
         # set acceleration multiplier
         query = f"UPDATE {self.race_perf_table} SET MaxDRSAccelerationMultiplier = ?;"
-        value = str(self.drs * 1.1)
+        value = str(self.drs * 1.005)
         print("Accerellation set", value)
         self.execute_value(query, (value,))
-        print("DRS set", self.get_drs())
+        # set acceleration multiplier
+        query = f"UPDATE {self.race_perf_table} SET MinDRSAccelerationMultiplier = ?;"
+        value = str(1)
+        print("Accerellation set", value)
+        self.execute_value(query, (value,))
 
     def get_slipstream(self):
         query = f"SELECT DirtyAirStraightSpeedMultiplier FROM {self.race_perf_table};"
@@ -131,19 +136,19 @@ class SeasonChanger(DBConnector):
     def set_temp_increase_rate(self, base_params):
         query = f'UPDATE {self.tyres_table} SET TempIncRate = ? WHERE Type = ?;'
         for i in range(5):
-            params = (base_params['TempIncRate'] + (i / 50), i)
+            params = (base_params['TempIncRate'] + (i / 20), i)
             self.cur.execute(query, params)
 
     def set_temp_decrease_rate(self, base_params):
         query = f'UPDATE {self.tyres_table} SET TempDecRate = ? WHERE Type = ?;'
         for i in range(5):
-            params = (base_params['TempDecRate'] + (i / 50), i)
+            params = (base_params['TempDecRate'] + (i / 25), i)
             self.cur.execute(query, params)
 
     def set_min_extreme_wear(self, base_params):
         query = f'UPDATE {self.tyres_table} SET MinExtremeWear = ? WHERE Type = ?;'
         for i in range(5):
-            params = (base_params['MinExtremeWear'] + (i / 25), i)
+            params = (base_params['MinExtremeWear'] + (i / 30), i)
             self.cur.execute(query, params)
 
     def set_max_extreme_wear(self, base_params):
@@ -155,7 +160,7 @@ class SeasonChanger(DBConnector):
     def set_min_optimal_wear(self, base_params):
         query = f'UPDATE {self.tyres_table} SET MinOptimalWear = ? WHERE Type = ?;'
         for i in range(5):
-            params = (base_params['MinOptimalWear'] + (i / 25), i)
+            params = (base_params['MinOptimalWear'] + (i / 30), i)
             self.cur.execute(query, params)
 
     def set_max_optimal_wear(self, base_params):
@@ -173,19 +178,19 @@ class SeasonChanger(DBConnector):
     def set_max_optimal_grip(self, base_params):
         query = f'UPDATE {self.tyres_table} SET MaxOptimalGrip = ? WHERE Type = ?;'
         for i in range(5):
-            params = (base_params['MaxOptimalGrip'] + (i / 7.5), i)
+            params = (base_params['MaxOptimalGrip'] + (i / 10), i)
             self.cur.execute(query, params)
 
     def set_min_extreme_grip(self, base_params):
         query = f'UPDATE {self.tyres_table} SET MinExtremeGrip = ? WHERE Type = ?;'
         for i in range(5):
-            params = (base_params['MinExtremeGrip'] + (i / 15), i)
+            params = (base_params['MinExtremeGrip'] + (i / 20), i)
             self.cur.execute(query, params)
 
     def set_max_extreme_grip(self, base_params):
         query = f'UPDATE {self.tyres_table} SET MaxExtremeGrip = ? WHERE Type = ?;'
         for i in range(5):
-            params = (base_params['MaxExtremeGrip'] + (i / 100), i)
+            params = (base_params['MaxExtremeGrip'] + (i / 15), i)
             self.cur.execute(query, params)
 
     def set_tyre_tempswear(self, base_params):
@@ -207,7 +212,7 @@ class SeasonChanger(DBConnector):
     def calculate_tyre_performance(self):
         perf_range = self.tyre3set_perf_diff
         base_modifier = self.base_perf
-        perf_mult = perf_range / 5
+        perf_mult = perf_range / 3
         values = [base_modifier]
         for i in range(1,5):
             values.append(base_modifier - (perf_mult * i))
@@ -219,7 +224,7 @@ class SeasonChanger(DBConnector):
         if not perf_range > 0:
             print('Performance range must be greater than 0')
             return None
-        base_params = {'dirty_air': {'DirtyAirLowSpeedMultiplier': 0.9, 'DirtyAirMediumSpeedMultiplier': 0.95, 'DirtyAirHighSpeedMultiplier': 0.98}}
+        base_params = {'dirty_air': {'DirtyAirLowSpeedMultiplier': 0.98, 'DirtyAirMediumSpeedMultiplier': 0.98, 'DirtyAirHighSpeedMultiplier': 0.98}}
         # Calculate the total ratio of the speed categories
         total_ratio = sum(base_params['dirty_air'].values())
 
@@ -229,10 +234,14 @@ class SeasonChanger(DBConnector):
         high_speed_reduction = base_params['dirty_air']['DirtyAirHighSpeedMultiplier'] / total_ratio * perf_range
 
         # Reduce the values of the speed categories by the calculated amounts while maintaining their ratios
-        base_params['dirty_air']['DirtyAirLowSpeedMultiplier'] -= low_speed_reduction
-        base_params['dirty_air']['DirtyAirMediumSpeedMultiplier'] -= medium_speed_reduction
-        base_params['dirty_air']['DirtyAirHighSpeedMultiplier'] -= high_speed_reduction
-
+        if perf_range > 0:
+            base_params['dirty_air']['DirtyAirLowSpeedMultiplier'] -= low_speed_reduction
+            base_params['dirty_air']['DirtyAirMediumSpeedMultiplier'] -= medium_speed_reduction
+            base_params['dirty_air']['DirtyAirHighSpeedMultiplier'] -= high_speed_reduction
+        else:
+            base_params['dirty_air']['DirtyAirLowSpeedMultiplier'] += low_speed_reduction
+            base_params['dirty_air']['DirtyAirMediumSpeedMultiplier'] += medium_speed_reduction
+            base_params['dirty_air']['DirtyAirHighSpeedMultiplier'] += high_speed_reduction
         self.set_dirty_air(base_params)
         print("Dirty air values set")
 
@@ -286,30 +295,92 @@ class SeasonChanger(DBConnector):
 
         print("Driver stats set")
 
+    def team_cash_infusion(self):
+        # jeff bezos and elon musk decide to give each team half a billion dollars
+        query = f"UPDATE {self.teams_finances} SET Balance = Balance + 500000000;"
+        self.execute(query)
+        print("Team cash infusion complete")
+
+    def calculate_tyre_strategy(self):
+        # TODO: Offset pitstop strategy by tyre duraiton lap
+
+        pass
+
+    def equal_engines(self):
+        # from engine manufacturers table select EngineDesignID
+        query = f"SELECT EngineDesignID FROM {self.engine_manufacturers};"
+        engine_design_ids = self.execute(query)
+        print('engine ids', engine_design_ids)
+        # set engine stats in parts_design table
+        # from engine manufacturers table select ErsDesignID
+        query = f"SELECT ErsDesignID FROM {self.engine_manufacturers};"
+        ers_design_ids = self.execute(query)
+        print('ers ids', ers_design_ids)
+        # from engine manufacturers table select gearboxDesignID
+        query = f"SELECT GearboxDesignID FROM {self.engine_manufacturers};"
+        gearbox_design_ids = self.execute(query)
+        print('gearbox ids', gearbox_design_ids)
+        # from engine manufacturers table select FuelDesignID
+
+        base_unit_value = 90
+        base_value = 950
+        for i, x in enumerate(engine_design_ids):
+            query = "SELECT DesignID, StatID, Value, UnitValue FROM Parts_DesignStatValues WHERE DesignID = ? "
+            result = self.execute_value(query, (x[0],)).fetchall()
+            for j, y in enumerate(result):
+                # update UnitValue in Parts_DesignStatValues where DesignID = ? and StatID = ?
+                query = f"UPDATE {self.design_stats} SET UnitValue = ? WHERE DesignID = ? and StatID = ?;"
+                self.execute_value(query, (base_unit_value, result[j][0], result[j][1]))
+                # update Value in Parts_DesignStatValues where DesignID = ? and StatID = ?
+                query = f"UPDATE {self.design_stats} SET Value = ? WHERE DesignID = ? and StatID = ?;"
+                self.execute_value(query, (base_value, result[j][0], result[j][1]))
+
+        for i, x in enumerate(ers_design_ids):
+            query = "SELECT DesignID, StatID, Value, UnitValue FROM Parts_DesignStatValues WHERE DesignID = ? "
+            result = self.execute_value(query, (x[0],)).fetchall()
+            for j, y in enumerate(result):
+                # update UnitValue in Parts_DesignStatValues where DesignID = ? and StatID = ?
+                query = f"UPDATE {self.design_stats} SET UnitValue = ? WHERE DesignID = ? and StatID = ?;"
+                self.execute_value(query, (base_unit_value, result[j][0], result[j][1]))
+                # update Value in Parts_DesignStatValues where DesignID = ? and StatID = ?
+                query = f"UPDATE {self.design_stats} SET Value = ? WHERE DesignID = ? and StatID = ?;"
+                self.execute_value(query, (base_value, result[j][0], result[j][1]))
+
+        for i, x in enumerate(ers_design_ids):
+            query = "SELECT DesignID, StatID, Value, UnitValue FROM Parts_DesignStatValues WHERE DesignID = ? "
+            result = self.execute_value(query, (x[0],)).fetchall()
+            for j, y in enumerate(result):
+                # update UnitValue in Parts_DesignStatValues where DesignID = ? and StatID = ?
+                query = f"UPDATE {self.design_stats} SET UnitValue = ? WHERE DesignID = ? and StatID = ?;"
+                self.execute_value(query, (base_unit_value, result[j][0], result[j][1]))
+                # update Value in Parts_DesignStatValues where DesignID = ? and StatID = ?
+                query = f"UPDATE {self.design_stats} SET Value = ? WHERE DesignID = ? and StatID = ?;"
+                self.execute_value(query, (base_value, result[j][0], result[j][1]))
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='F1 2021 Season Changer')
     parser.add_argument('--save', type=str, default='autosave.sav', help='the name of the save to extract from and overwrite')
     parser.add_argument('--base_tl', type=float, default=1.75, help='base tyre life')
     parser.add_argument('--base_perf', type=float, default=1.0, help='base tyre performance')
-    parser.add_argument('--tperf_diff', type=float, default=0.5, help='base tyre performance')
-    parser.add_argument('--tlife_diff', type=float, default=0.3, help='tyre performance difference between 3 set of tyres')
-    parser.add_argument('--dirty_air', type=float, default=0.1, help='dirty air performance reduction')
+    parser.add_argument('--tperf_diff', type=float, default=0.37, help='base tyre performance')
+    parser.add_argument('--tlife_diff', type=float, default=0.30, help='tyre performance difference between 3 set of tyres')
+    parser.add_argument('--dirty_air', type=float, default=0.23, help='dirty air performance reduction')
 
     parser.add_argument('--temp_inc_rate', type=float, default=0.75, help='tyre temperature increase rate')
-    parser.add_argument('--temp_dec_rate', type=float, default=0.9, help='tyre temperature decrease rate')
+    parser.add_argument('--temp_dec_rate', type=float, default=0.81, help='tyre temperature decrease rate')
 
-    parser.add_argument('--min_extreme_wear', type=float, default=0.5, help='min tyre wear in extreme temp range')
-    parser.add_argument('--max_extreme_wear', type=float, default=0.9, help='max tyre wear in extreme temp range')
-    parser.add_argument('--min_optimal_wear', type=float, default=0.25, help='min tyre wear in optimal temp range')
-    parser.add_argument('--max_optimal_wear', type=float, default=0.45, help='max tyre wear in optimal temp range')
-    parser.add_argument('--min_optimal_grip', type=float, default=0.70, help='min tyre grip in optimal temp range')
+    parser.add_argument('--min_extreme_wear', type=float, default=0.35, help='min tyre wear in extreme temp range')
+    parser.add_argument('--max_extreme_wear', type=float, default=0.55, help='max tyre wear in extreme temp range')
+    parser.add_argument('--min_optimal_wear', type=float, default=0.2, help='min tyre wear in optimal temp range')
+    parser.add_argument('--max_optimal_wear', type=float, default=0.40, help='max tyre wear in optimal temp range')
+    parser.add_argument('--min_optimal_grip', type=float, default=0.60, help='min tyre grip in optimal temp range')
     parser.add_argument('--max_optimal_grip', type=float, default=0.75, help='max tyre grip in optimal temp range')
-    parser.add_argument('--min_extreme_grip', type=float, default=0.55, help='min tyre grip in extreme temp range')
-    parser.add_argument('--max_extreme_grip', type=float, default=0.75, help='max tyre grip in extreme temp range')
+    parser.add_argument('--min_extreme_grip', type=float, default=0.40, help='min tyre grip in extreme temp range')
+    parser.add_argument('--max_extreme_grip', type=float, default=0.65, help='max tyre grip in extreme temp range')
 
-    parser.add_argument('--drs', type=float, default=1.05, help='Drs performance')
-    parser.add_argument('--slipstream', type=float, default=1.0125, help='slipstream performance')
+    parser.add_argument('--drs', type=float, default=1.015, help='Drs performance')
+    parser.add_argument('--slipstream', type=float, default=1.001, help='slipstream performance')
     ARGS = parser.parse_args()
 
     # save folder location
@@ -331,10 +402,11 @@ if __name__ == '__main__':
                               tyre3set_perf_diff=ARGS.tperf_diff,
                               tyre3set_life_diff=ARGS.tlife_diff,
                               dirty_air=ARGS.dirty_air,
-                              drs=1.05,
-                              slipstream=1.0125)
+                              drs=ARGS.drs,
+                              slipstream=ARGS.slipstream,)
 
     # # calculate new values and assign them to the database
+    season_v1.equal_engines()
     season_v1.calculate_dirty_air()
     season_v1.calculate_tyre_performance()
     season_v1.calculate_tyre_life()
@@ -342,6 +414,7 @@ if __name__ == '__main__':
     season_v1.set_drs()
     season_v1.set_slipstream()
     season_v1.set_driver_data()
+    #season_v1.team_cash_infusion()
     season_v1.commit()
     print("Committed changes")
     # # TODO: save season object to redis that can be later loaded if you need to roll back
