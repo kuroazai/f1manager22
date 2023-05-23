@@ -3,10 +3,9 @@ import os
 import json
 import enum
 import config as cfg
-import sys
-import shutil
 import argparse
-import redis
+import pickle
+from conredis import ConRedis
 
 class DBConnector:
     def __init__(self, db_path):
@@ -114,13 +113,12 @@ class SeasonChanger(DBConnector):
         self.execute_value(query, (value,))
         # set acceleration multiplier
         query = f"UPDATE {self.race_perf_table} SET MaxDRSAccelerationMultiplier = ?;"
-        value = str(self.drs * 1.005)
+        value = str(self.drs * 1.05)
         print("Accerellation set", value)
         self.execute_value(query, (value,))
         # set acceleration multiplier
         query = f"UPDATE {self.race_perf_table} SET MinDRSAccelerationMultiplier = ?;"
         value = str(1)
-        print("Accerellation set", value)
         self.execute_value(query, (value,))
 
     def get_slipstream(self):
@@ -202,7 +200,7 @@ class SeasonChanger(DBConnector):
     def calculate_tyre_life(self):
         perf_range = self.tyre3set_life_diff
         base_modifier = self.base_tyre_life
-        perf_mult = perf_range
+        perf_mult = perf_range / 3
         values = [base_modifier]
         for i in range(1,5):
             values.append(base_modifier - (perf_mult * i))
@@ -322,8 +320,8 @@ class SeasonChanger(DBConnector):
         print('gearbox ids', gearbox_design_ids)
         # from engine manufacturers table select FuelDesignID
 
-        base_unit_value = 90
-        base_value = 950
+        base_unit_value = 100
+        base_value = 1000
         for i, x in enumerate(engine_design_ids):
             query = "SELECT DesignID, StatID, Value, UnitValue FROM Parts_DesignStatValues WHERE DesignID = ? "
             result = self.execute_value(query, (x[0],)).fetchall()
@@ -358,34 +356,53 @@ class SeasonChanger(DBConnector):
                 self.execute_value(query, (base_value, result[j][0], result[j][1]))
 
 
+    def equal_stats(self):
+        # teams will start with a baseline equal car will be affected by development team
+        base_unit_value = 50
+        base_value = 500
+        # update UnitValue Parts_DesignStatValues SET UnitValue = 90 ;
+        query = f"UPDATE {self.design_stats} SET UnitValue = ?;"
+        self.execute_value(query, (base_unit_value,))
+        # update Value Parts_DesignStatValues SET Value = 950 ;
+        query = f"UPDATE {self.design_stats} SET Value = ?;"
+        self.execute_value(query, (base_value,))
+
+
+def pack_object(obj):
+    return pickle.dumps(obj)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='F1 2021 Season Changer')
     parser.add_argument('--save', type=str, default='autosave.sav', help='the name of the save to extract from and overwrite')
-    parser.add_argument('--base_tl', type=float, default=1.75, help='base tyre life')
+    parser.add_argument('--base_tl', type=float, default=0.95, help='base tyre life')
     parser.add_argument('--base_perf', type=float, default=1.0, help='base tyre performance')
-    parser.add_argument('--tperf_diff', type=float, default=0.37, help='base tyre performance')
-    parser.add_argument('--tlife_diff', type=float, default=0.30, help='tyre performance difference between 3 set of tyres')
-    parser.add_argument('--dirty_air', type=float, default=0.23, help='dirty air performance reduction')
+    parser.add_argument('--tperf_diff', type=float, default=0.40, help='base tyre performance')
+    parser.add_argument('--tlife_diff', type=float, default=0.25, help='tyre performance difference between 3 set of tyres')
+    parser.add_argument('--dirty_air', type=float, default=0.01, help='dirty air performance reduction')
 
-    parser.add_argument('--temp_inc_rate', type=float, default=0.75, help='tyre temperature increase rate')
-    parser.add_argument('--temp_dec_rate', type=float, default=0.81, help='tyre temperature decrease rate')
+    parser.add_argument('--temp_inc_rate', type=float, default=2, help='tyre temperature increase rate')
+    parser.add_argument('--temp_dec_rate', type=float, default=0.01, help='tyre temperature decrease rate')
 
-    parser.add_argument('--min_extreme_wear', type=float, default=0.35, help='min tyre wear in extreme temp range')
-    parser.add_argument('--max_extreme_wear', type=float, default=0.55, help='max tyre wear in extreme temp range')
-    parser.add_argument('--min_optimal_wear', type=float, default=0.2, help='min tyre wear in optimal temp range')
-    parser.add_argument('--max_optimal_wear', type=float, default=0.40, help='max tyre wear in optimal temp range')
-    parser.add_argument('--min_optimal_grip', type=float, default=0.60, help='min tyre grip in optimal temp range')
-    parser.add_argument('--max_optimal_grip', type=float, default=0.75, help='max tyre grip in optimal temp range')
-    parser.add_argument('--min_extreme_grip', type=float, default=0.40, help='min tyre grip in extreme temp range')
-    parser.add_argument('--max_extreme_grip', type=float, default=0.65, help='max tyre grip in extreme temp range')
+    parser.add_argument('--min_extreme_wear', type=float, default=0.4, help='min tyre wear in extreme temp range')
+    parser.add_argument('--max_extreme_wear', type=float, default=0.6, help='max tyre wear in extreme temp range')
+    parser.add_argument('--min_optimal_wear', type=float, default=0.15, help='min tyre wear in optimal temp range')
+    parser.add_argument('--max_optimal_wear', type=float, default=0.30, help='max tyre wear in optimal temp range')
+    parser.add_argument('--min_optimal_grip', type=float, default=0.65, help='min tyre grip in optimal temp range')
+    parser.add_argument('--max_optimal_grip', type=float, default=0.85, help='max tyre grip in optimal temp range')
+    parser.add_argument('--min_extreme_grip', type=float, default=0.45, help='min tyre grip in extreme temp range')
+    parser.add_argument('--max_extreme_grip', type=float, default=0.70, help='max tyre grip in extreme temp range')
 
-    parser.add_argument('--drs', type=float, default=1.015, help='Drs performance')
-    parser.add_argument('--slipstream', type=float, default=1.001, help='slipstream performance')
+    parser.add_argument('--drs', type=float, default=1.0005, help='Drs performance')
+    parser.add_argument('--slipstream', type=float, default=1.0, help='slipstream performance')
     ARGS = parser.parse_args()
 
     # save folder location
     save_folder = cfg.save_folder
     db_dir = os.path.join(save_folder, 'result', 'main.db')
+
+    # conredis
+    redis = ConRedis()
 
     #xAranaktu script to unpack to extract autosave
     script_dir = os.path.join(os.getcwd(), 'utils', 'script.py')
@@ -406,6 +423,7 @@ if __name__ == '__main__':
                               slipstream=ARGS.slipstream,)
 
     # # calculate new values and assign them to the database
+    season_v1.equal_stats()
     season_v1.equal_engines()
     season_v1.calculate_dirty_air()
     season_v1.calculate_tyre_performance()
@@ -414,11 +432,12 @@ if __name__ == '__main__':
     season_v1.set_drs()
     season_v1.set_slipstream()
     season_v1.set_driver_data()
-    #season_v1.team_cash_infusion()
+    season_v1.team_cash_infusion()
     season_v1.commit()
     print("Committed changes")
     # # TODO: save season object to redis that can be later loaded if you need to roll back
-
+    redis.dump_object_to_redis('season_v1', season_v1)
+    print("Saved season object to redis")
     # #xAranaktu script to pack back to save
     os_cmd = f'python "{script_dir}" --operation repack --result "{autosave_dir}" --input {result_dir}'
     os.system(os_cmd)
