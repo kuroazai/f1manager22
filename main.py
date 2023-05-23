@@ -392,6 +392,7 @@ if __name__ == '__main__':
     parser.add_argument('--max_optimal_grip', type=float, default=0.85, help='max tyre grip in optimal temp range')
     parser.add_argument('--min_extreme_grip', type=float, default=0.45, help='min tyre grip in extreme temp range')
     parser.add_argument('--max_extreme_grip', type=float, default=0.70, help='max tyre grip in extreme temp range')
+    parser.add_argument('--load_season', type=str, default=None, help='load a previous instance you created from redis')
 
     parser.add_argument('--drs', type=float, default=1.0005, help='Drs performance')
     parser.add_argument('--slipstream', type=float, default=1.0, help='slipstream performance')
@@ -412,15 +413,19 @@ if __name__ == '__main__':
     os.system(os_cmd)
     print("Unpacked autosave")
 
-    # example
-    season_v1 = SeasonChanger(db_path=db_dir,
-                              base_tyre_life=ARGS.base_tl,
-                              base_perf=ARGS.base_perf,
-                              tyre3set_perf_diff=ARGS.tperf_diff,
-                              tyre3set_life_diff=ARGS.tlife_diff,
-                              dirty_air=ARGS.dirty_air,
-                              drs=ARGS.drs,
-                              slipstream=ARGS.slipstream,)
+    # example load from redis
+    if ARGS.load_season is not None:
+        season_v1 = redis.retrieve_object_from_redis('season_v1')
+    else:
+        # example
+        season_v1 = SeasonChanger(db_path=db_dir,
+                                  base_tyre_life=ARGS.base_tl,
+                                  base_perf=ARGS.base_perf,
+                                  tyre3set_perf_diff=ARGS.tperf_diff,
+                                  tyre3set_life_diff=ARGS.tlife_diff,
+                                  dirty_air=ARGS.dirty_air,
+                                  drs=ARGS.drs,
+                                  slipstream=ARGS.slipstream,)
 
     # # calculate new values and assign them to the database
     season_v1.equal_stats()
