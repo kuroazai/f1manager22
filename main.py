@@ -393,6 +393,7 @@ if __name__ == '__main__':
     parser.add_argument('--min_extreme_grip', type=float, default=0.45, help='min tyre grip in extreme temp range')
     parser.add_argument('--max_extreme_grip', type=float, default=0.70, help='max tyre grip in extreme temp range')
     parser.add_argument('--load_season', type=str, default=None, help='load a previous instance you created from redis')
+    parser.add_argument('--save_season', type=str, default=None, help='save the current instance to redis')
 
     parser.add_argument('--drs', type=float, default=1.0005, help='Drs performance')
     parser.add_argument('--slipstream', type=float, default=1.0, help='slipstream performance')
@@ -441,7 +442,8 @@ if __name__ == '__main__':
     season_v1.commit()
     print("Committed changes")
     # # TODO: save season object to redis that can be later loaded if you need to roll back
-    redis.dump_object_to_redis('season_v1', season_v1)
+    if ARGS.save_season is not None:
+        redis.dump_object_to_redis('season_v1', season_v1)
     print("Saved season object to redis")
     # #xAranaktu script to pack back to save
     os_cmd = f'python "{script_dir}" --operation repack --result "{autosave_dir}" --input {result_dir}'
