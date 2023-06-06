@@ -57,6 +57,7 @@ class SeasonChanger(DBConnector):
     teams_finances: str = 'Finance_TeamBalance'
     engine_manufacturers: str = 'Parts_Enum_EngineManufacturers'
     design_stats: str = 'Parts_DesignStatValues'
+    track_perf: str = 'Races_TeamPerformance'
 
     def __init__(self, db_path: str, base_tyre_life: int, base_perf: int, tyre3set_perf_diff: float, tyre3set_life_diff: float, dirty_air: float, drs: float, slipstream: float, f1_cfg=cfg):
         super().__init__(db_path)
@@ -358,14 +359,26 @@ class SeasonChanger(DBConnector):
 
     def equal_stats(self):
         # teams will start with a baseline equal car will be affected by development team
-        base_unit_value = 50
-        base_value = 500
+        base_unit_value = 25
+        base_value = 250
         # update UnitValue Parts_DesignStatValues SET UnitValue = 90 ;
         query = f"UPDATE {self.design_stats} SET UnitValue = ?;"
         self.execute_value(query, (base_unit_value,))
         # update Value Parts_DesignStatValues SET Value = 950 ;
         query = f"UPDATE {self.design_stats} SET Value = ?;"
         self.execute_value(query, (base_value,))
+        print("Stats equalised")
+
+    def equal_track_stats(self):
+        query = f"UPDATE {self.track_perf} SET Straights = 1.0;"
+        self.execute(query)
+        query = f"UPDATE {self.track_perf} SET SlowCorners = 1.0;"
+        self.execute(query)
+        query = f"UPDATE {self.track_perf} SET FastCorners = 1.0;"
+        self.execute(query)
+        query = f"UPDATE {self.track_perf} SET MediumCorners = 1.0;"
+        self.execute(query)
+        print("Track stats equalised")
 
 
 def pack_object(obj):
@@ -379,7 +392,7 @@ if __name__ == '__main__':
     parser.add_argument('--base_perf', type=float, default=1.0, help='base tyre performance')
     parser.add_argument('--tperf_diff', type=float, default=0.40, help='base tyre performance')
     parser.add_argument('--tlife_diff', type=float, default=0.25, help='tyre performance difference between 3 set of tyres')
-    parser.add_argument('--dirty_air', type=float, default=0.01, help='dirty air performance reduction')
+    parser.add_argument('--dirty_air', type=float, default=0.2, help='dirty air performance reduction')
 
     parser.add_argument('--temp_inc_rate', type=float, default=2, help='tyre temperature increase rate')
     parser.add_argument('--temp_dec_rate', type=float, default=0.01, help='tyre temperature decrease rate')
@@ -430,6 +443,7 @@ if __name__ == '__main__':
 
     # # calculate new values and assign them to the database
     season_v1.equal_stats()
+    season_v1.equal_track_stats()
     season_v1.equal_engines()
     season_v1.calculate_dirty_air()
     season_v1.calculate_tyre_performance()
