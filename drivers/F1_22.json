@@ -5,7 +5,7 @@
     "cornering": 96,
     "braking": 95,
     "control": 97,
-    "smoothness": 95,
+    "smoothness": 97,
     "adaptability": 94,
     "overtaking": 95,
     "defence": 92,
@@ -132,15 +132,15 @@
 {
     "driver": "Fernando Alonso",
     "ID": "ALO",
-    "cornering": 90,
-    "braking": 91,
-    "control": 90,
-    "smoothness": 88,
-    "adaptability": 89,
+    "cornering": 93,
+    "braking": 92,
+    "control": 93,
+    "smoothness": 90,
+    "adaptability": 90,
     "overtaking": 92,
-    "defence": 89,
-    "acceleration": 88,
-    "accuracy": 87
+    "defence": 91,
+    "acceleration": 91,
+    "accuracy": 92
   },
   {
     "driver": "Lance Stroll",
