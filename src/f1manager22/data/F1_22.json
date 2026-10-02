@@ -64,7 +64,7 @@
     "acceleration": 93,
     "accuracy": 90
   },
-{
+  {
     "driver": "Carlos Sainz",
     "ID": "SAI",
     "cornering": 90,
@@ -129,7 +129,7 @@
     "acceleration": 89,
     "accuracy": 88
   },
-{
+  {
     "driver": "Fernando Alonso",
     "ID": "ALO",
     "cornering": 93,
@@ -194,7 +194,7 @@
     "acceleration": 73,
     "accuracy": 71
   },
-{
+  {
     "driver": "Yuki Tsunoda",
     "ID": "TSU",
     "cornering": 85,
@@ -209,7 +209,7 @@
   },
   {
     "driver": "Mick Schumacher",
-    "ID": "Schumacher",
+    "ID": "MSC",
     "cornering": 86,
     "braking": 85,
     "control": 84,
@@ -220,7 +220,7 @@
     "acceleration": 85,
     "accuracy": 84
   },
- {
+  {
     "driver": "Alex Albon",
     "ID": "ALB",
     "cornering": 87,

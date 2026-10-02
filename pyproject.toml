@@ -1,0 +1,58 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "f1manager22"
+version = "1.0.0"
+description = "Edit an F1 Manager 2022 save: tyre model, aero, driver ratings and team balance"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "Fidelis Mwansa" }]
+keywords = ["f1-manager", "savegame", "modding", "sqlite", "f1"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Games/Entertainment :: Simulation",
+    "Typing :: Typed",
+]
+# Nothing. sqlite3 and argparse are in the standard library.
+#
+# The original requirements.txt listed `sqlite3` and `redis`. sqlite3 is not on
+# PyPI, so `pip install -r requirements.txt` failed outright on the first line,
+# which was also step 1 of the install instructions.
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8.2", "pytest-cov>=4", "ruff>=0.4", "mypy>=1.8"]
+
+[project.scripts]
+f1m22 = "f1manager22.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/kuroazai/f1manager22"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/f1manager22"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.10"
+files = ["src/f1manager22"]
+ignore_missing_imports = true
